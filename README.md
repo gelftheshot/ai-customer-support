@@ -1,6 +1,6 @@
 # AI Customer Support
 
-A customer-support chat application with generated replies and conversation storage.
+A support-style chat app from August 2024. Replies stream in from Gemini (`gemini-1.5-pro-latest`) while they are being written, and every conversation is kept in Firestore.
 
 [Open the live demo](https://ai-customer-support-topaz.vercel.app)
 
@@ -8,15 +8,19 @@ A customer-support chat application with generated replies and conversation stor
 
 *Public demo homepage, captured November 6, 2026.*
 
-## What it does
+## What happens when you send a message
 
-- Provides a chat interface for customer questions.
-- Streams generated responses from the server.
-- Saves conversation messages through Firestore.
+1. Starting a chat creates a random ID with `uuid` and opens `/chat/<id>`.
+2. `components/chat.jsx` saves your message under `chats/<id>/messages` in Firestore, then posts the whole conversation to `/api/chat`.
+3. `app/api/chat/route.js` passes that history to Gemini with `generateContentStream` and streams the text back to the page.
+4. When the stream finishes, the browser saves the reply next to your message. The first message of a chat becomes its title in the sidebar.
 
-## Run locally
+## Known limits
 
-You need Node.js, npm, a Google Generative AI API key, and a Firebase project with Firestore configured for your own application.
+- The route sends no system prompt and no company information, so Gemini answers from the conversation alone.
+- Your message is written to Firestore twice: once by `components/chat.jsx` and again by the API route.
+
+## Setting it up
 
 ```bash
 git clone https://github.com/gelftheshot/ai-customer-support.git
@@ -24,34 +28,17 @@ cd ai-customer-support
 npm ci
 ```
 
-Create `.env.local` in the project root:
+The server route needs a Gemini key and the browser needs the Firebase web key. Put both in `.env.local`:
 
 ```dotenv
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_web_api_key
 ```
 
-Update the project-specific Firebase web-app settings in `firebase.js` to match your own Firebase project. Configure Firestore access for that project before using the conversation-storage feature.
+The remaining Firebase settings are written into `firebase.js` for my own project. Swap them for yours, and make sure your Firestore rules let the app read and write the `chats` collection.
 
-```bash
-npm run dev
-```
+`npm run dev` serves the app on port 3000. For production, run `npm run build` followed by `npm start`.
 
-Open [http://localhost:3000](http://localhost:3000).
+If your Google key cannot use `gemini-1.5-pro-latest`, change the model name in `app/api/chat/route.js`.
 
-For a production build:
-
-```bash
-npm run build
-npm start
-```
-
-The existing chat route uses the model configured in `app/api/chat/route.js`. Verify provider access and current model availability when setting up your own environment.
-
-## Main files
-
-- `app/api/chat/route.js`: accepts conversation messages and a chat ID, generates a response stream, and stores the latest user message.
-- `app/chat/[chatID]/page.js`: conversation interface.
-- `firebase.js`: Firebase/Firestore initialization.
-
-[Project write-up](https://www.lihongebre.com/projects/ai-customer-support)
+Background and screenshots: [AI Customer Support write-up](https://www.lihongebre.com/projects/ai-customer-support)
